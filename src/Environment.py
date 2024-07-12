@@ -138,7 +138,7 @@ class Agent():
         #######################################################
         theta_acc = self.theta_acc*self.inertia + tau_net #/ I        La dimensione incide troppo sull'angolo (accellerazione nulla e non ruota mai)
         theta_vel = self.theta_vel*self.inertia + theta_acc
-        self.angle += theta_vel / 5                                 # non dividendo e potenza 0.9 ruota troppo veloce, dividendo per 10 diventa lento, 5 sembra un buon trade of
+        self.angle += theta_vel                                     # non dividendo e potenza 0.9 ruota troppo veloce, dividendo per 10 diventa lento, 5 sembra un buon trade of
                                                                     # Da sostituire alla I???
 
         # Test aggiornamento coordinate
@@ -149,7 +149,7 @@ class Agent():
 
         self.speed = (speed_x, speed_y)
         
-        self.coords = (self.coords[0] + speed_x*20, self.coords[1] + speed_y*20)
+        self.coords = (self.coords[0] + speed_x*30, self.coords[1] + speed_y*30)
         
         
         # self.angular_speed = self.angular_speed*self.inertia + left_speed * 5 - right_speed * 5                      
@@ -328,8 +328,8 @@ class Environment():
         return self.shuttle_agent.get_fuel() < 2 \
             or shuttle_x < 0 or shuttle_x > self.image_size \
             or shuttle_y < 0 or shuttle_y > self.image_size \
-            or abs( np.sqrt( shuttle_x**2 + shuttle_y**2 ) - np.sqrt( moon_x**2  + moon_y**2  ) ) <=  self.moon_size*430 \
-            or abs( np.sqrt( shuttle_x**2 + shuttle_y**2 ) - np.sqrt( earth_x**2 + earth_y**2 ) ) <=  self.earth_size*430
+            or np.sqrt( (shuttle_x-moon_x) **2 + (shuttle_y-moon_y) **2 ) <=  self.moon_size*430 \
+            or np.sqrt( (shuttle_x-earth_x)**2 + (shuttle_y-earth_y)**2 ) <=  self.earth_size*430
 
     def __is_landed(self):
         """
@@ -351,9 +351,9 @@ class Environment():
         target_x: int = self.moon_coords[0] - 512*self.moon_size*np.sin((shuttle_angle) * np.pi/180)
         target_y: int = self.moon_coords[1] + 512*self.moon_size*np.cos((shuttle_angle) * np.pi/180)
 
-        return abs( np.sqrt( shuttle_x**2 + shuttle_y**2 ) - np.sqrt( moon_x**2 + moon_y**2 ) )     <=  self.moon_size*600 \
-           and abs( np.sqrt( shuttle_x**2 + shuttle_y**2 ) - np.sqrt( moon_x**2 + moon_y**2 ) )     >   self.moon_size*430 \
-           and abs( np.sqrt( shuttle_x**2 + shuttle_y**2 ) - np.sqrt( target_x**2 + target_y**2 ) ) <=  self.shuttle_size*430 \
+        return np.sqrt( (shuttle_x-moon_x)  **2 + (shuttle_y-moon_y)  **2 ) <=  self.moon_size*600 \
+           and np.sqrt( (shuttle_x-moon_x)  **2 + (shuttle_y-moon_y)  **2 ) >   self.moon_size*430 \
+           and np.sqrt( (shuttle_x-target_x)**2 + (shuttle_y-target_y)**2 ) <=  self.shuttle_size*430 \
            and shuttle_speed_x <= 0.5 and shuttle_speed_y <= 0.5 and shuttle_angular_speed <= 0.5
 
     def __is_near(self):
