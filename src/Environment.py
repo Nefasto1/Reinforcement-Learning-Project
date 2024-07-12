@@ -19,22 +19,50 @@ from PIL import Image                                        # To Rotate the ima
 ###########################################################
 
 class Agent():
-    def __init__(self, angle, earth_size, earth_coords):
+    def __init__(self, 
+                 angle:        int, 
+                 earth_size:   int, 
+                 earth_coords: tuple
+                ):
         # Initialize the Agent information with the input data
-        self.angle = angle
-        self.coords = (earth_coords[0] - 512*earth_size*np.sin((self.angle - 90) * np.pi/180) ,
-                       earth_coords[1] + 512*earth_size*np.cos((self.angle - 90) * np.pi/180) )
+        self.angle:  int   = angle
+        self.coords: tuple = (earth_coords[0] - 512*earth_size*np.sin((self.angle - 90) * np.pi/180) ,
+                              earth_coords[1] + 512*earth_size*np.cos((self.angle - 90) * np.pi/180) )
 
-        self.speed = (0, 0)
-        self.angular_speed = 0
-        self.fuel = 200
+        self.speed:         tuple = (0, 0)
+        self.angular_speed: float = 0
+        self.fuel:          int   = 200
 
-    def step(self, action, alpha):
-        # Determine if the engines are over 0.5 and get their shifted value
-        left_speed   = (action[0] > 0.5) * (action[0] - 0.5)
-        middle_speed = (action[1] > 0.5) * (action[1] - 0.5)
-        right_speed  = (action[2] > 0.5) * (action[2] - 0.5)
+    def __update_fuel(self, 
+                      left_speed:   float, 
+                      middle_speed: float, 
+                      right_speed:  float
+                     ):  
+        """
+        Update the fuel counter and check if the engine can be activated
+        (To go left you activate the right engine and viceversa)
 
+        Parameters
+        ----------
+        left_speed: float
+            Amount of energy in the right engine
+        middle_speed: float
+            Amount of energy in the middle engine
+        right_speed: float
+            Amount of energy in the left engine
+
+        Returns
+        -------
+        left_speed: float
+            Amount of energy in the right engine
+            0 if not enough fuel, input otherwise
+        middle_speed: float
+            Amount of energy in the middle engine
+            0 if not enough fuel, input otherwise
+        right_speed: float
+            Amount of energy in the left engine
+            0 if not enough fuel, input otherwise
+        """
         # Determine if the shuttle has enough fuel to activate the left engine
         left_speed = 0 if self.fuel - 2 * left_speed < 0 else left_speed
         self.fuel -= 2 * left_speed
@@ -47,18 +75,42 @@ class Agent():
         middle_speed = 0 if self.fuel - 5 * middle_speed < 0 else middle_speed
         self.fuel -= 5 * middle_speed
 
+        return left_speed, middle_speed, right_speed
+
+    def step(self, 
+             action: int, 
+             alpha:  float
+            ):
+        # Determine if the engines are over 0.5 and get their shifted value
+        left_speed   = (action[0] > 0.5) * (action[0] - 0.5)
+        middle_speed = (action[1] > 0.5) * (action[1] - 0.5)
+        right_speed  = (action[2] > 0.5) * (action[2] - 0.5)
+
+        # Update the fuel counter and check if the engines can be activated
+        left_speed, middle_speed, right_speed = self.__update_fuel(left_speed, middle_speed, right_speed)
+
+        ##################################################################################################
+        ##                                        CHECK THE PHYSICS                                     ##
+        ##################################################################################################
+        
         # Determine the angular speed and update the shuttle angle
-        self.angular_speed = self.angular_speed*alpha + left_speed * 5 - right_speed * 5
+        self.angular_speed = self.angular_speed*alpha + left_speed * 5 - right_speed * 5                      
         self.angle += self.angular_speed
 
         # Determine the new shuttle speed
-        new_x_speed = (self.speed[0]*alpha + left_speed *0.6 + middle_speed * np.cos(self.angle*np.pi/180) *1.4)
-        new_y_speed = (self.speed[1]*alpha + right_speed*0.6 + middle_speed * np.sin(self.angle*np.pi/180) *1.4)
+        new_x_speed = (self.speed[0]*alpha + left_speed *0.6 + middle_speed * np.cos(self.angle*np.pi/180)*1.4)
+        new_y_speed = (self.speed[1]*alpha + right_speed*0.6 + middle_speed * np.sin(self.angle*np.pi/180)*1.4)
         self.speed = (new_x_speed, new_y_speed)
 
         # Update the shuttle coordinates
         self.coords = (self.coords[0] + self.speed[0]*20, self.coords[1] + self.speed[1]*20)
 
+        return left_speed, middle_speed, right_speed
+
+        ##################################################################################################
+        ##                                        CHECK THE PHYSICS                                     ##
+        ##################################################################################################
+    
     def get_angle(self):
         return self.angle-90
     def get_coords(self):
@@ -69,7 +121,13 @@ class Agent():
         return self.speed
     def get_angular_speed(self):
         return self.angular_speed
+    def get_state(self):
+        # Get the shuttle informations as the current state
+        shuttle_x, shuttle_y = self.coords
+        shuttle_speed_x, shuttle_speed_y = self.speed
 
+        return (shuttle_x, shuttle_y, self.angle, shuttle_speed_x, shuttle_speed_y, self.angular_speed, self.fuel)
+        
 ###########################################################
 ##                ENVIRONMENT DEFINITION                 ##
 ###########################################################
@@ -81,15 +139,15 @@ class Environment():
         self.__load_assets()
 
         # Initialize the images size
-        self.image_size   = 1000
-        self.earth_size   = 1/4
-        self.moon_size    = 1/8
-        self.shuttle_size = 1/16
-        self.fire_size    = 1/51
-        self.flag_size    = 1/51
+        self.image_size:   int   = 1000
+        self.earth_size:   float = 1/4
+        self.moon_size:    float = 1/8
+        self.shuttle_size: float = 1/16
+        self.fire_size:    float = 1/51
+        self.flag_size:    float = 1/51
 
         # Force to use Render method to can obtain the initial state
-        self.__initialized = False
+        self.__initialized: bool = False
 
     
     #######################################################################################################################################
@@ -100,16 +158,16 @@ class Environment():
 
     def __load_assets(self):
         # Load the images
-        assets = ["earth", "fire", "moon", "spaceship", "flag", "explode"]
-        asset_images = {asset:imread(f"./assets/{asset}.png") for asset in assets}
+        assets:       list = ["earth", "fire", "moon", "spaceship", "flag", "explode"]
+        asset_images: dict = {asset:imread(f"./assets/{asset}.png") for asset in assets}
 
         # Convert the images to numpy array
-        earth     = (asset_images["earth"]     * 255).astype(np.uint8)
-        moon      = (asset_images["moon"]      * 255).astype(np.uint8)
-        flag      = (asset_images["flag"]      * 255).astype(np.uint8)
-        shuttle   = (asset_images["spaceship"] * 255).astype(np.uint8)
-        fire      = (asset_images["fire"]      * 255).astype(np.uint8)
-        explosion = (asset_images["explode"]   * 255).astype(np.uint8)
+        earth:     np.array = (asset_images["earth"]     * 255).astype(np.uint8)
+        moon:      np.array = (asset_images["moon"]      * 255).astype(np.uint8)
+        flag:      np.array = (asset_images["flag"]      * 255).astype(np.uint8)
+        shuttle:   np.array = (asset_images["spaceship"] * 255).astype(np.uint8)
+        fire:      np.array = (asset_images["fire"]      * 255).astype(np.uint8)
+        explosion: np.array = (asset_images["explode"]   * 255).astype(np.uint8)
 
         self.earth      = Image.fromarray(earth)
         self.moon       = Image.fromarray(moon)
@@ -121,18 +179,11 @@ class Environment():
         self.explosion  = explosion
 
     def __state(self):
-        # Get the shuttle informations as the current state
-        shuttle_x, shuttle_y = self.shuttle_agent.get_coords()
-        shuttle_angle        = self.shuttle_agent.get_angle()
-        shuttle_speed_x, shuttle_speed_y = self.shuttle_agent.get_speed()
-        shuttle_angular_speed = self.shuttle_agent.get_angular_speed()
-        shuttle_fuel = self.shuttle_agent.get_fuel()
-
-        return (shuttle_x, shuttle_y, shuttle_angle, shuttle_speed_x, shuttle_speed_y, shuttle_angular_speed, shuttle_fuel)
+        return self.shuttle_agent.get_state()
 
     def __rotate(self):
         # Get the shuttle angle
-        shuttle_angle = self.shuttle_agent.get_angle()
+        shuttle_angle: int = self.shuttle_agent.get_angle()
 
         # Rotate the images
         earth_rotated      = self.earth     .rotate(self.earth_angle,    expand=True)
@@ -231,16 +282,16 @@ class Environment():
         """
 
         # Get the shuttle, moon informations
-        shuttle_x, shuttle_y = self.shuttle_agent.get_coords()
-        shuttle_angle        = self.shuttle_agent.get_angle()
-        shuttle_speed_x, shuttle_speed_y = self.shuttle_agent.get_speed()
-        shuttle_angular_speed = self.shuttle_agent.get_angular_speed()
+        shuttle_x, shuttle_y                   = self.shuttle_agent.get_coords()
+        shuttle_angle:                     int = self.shuttle_agent.get_angle()
+        shuttle_speed_x, shuttle_speed_y       = self.shuttle_agent.get_speed()
+        shuttle_angular_speed:           float = self.shuttle_agent.get_angular_speed()
 
-        moon_x, moon_y       = self.moon_coords
+        moon_x, moon_y = self.moon_coords
 
         # Determine the target position of the shuttle based on its angle to have a safe landing
-        target_x = self.moon_coords[0] - 512*self.moon_size*np.sin((shuttle_angle) * np.pi/180)
-        target_y = self.moon_coords[1] + 512*self.moon_size*np.cos((shuttle_angle) * np.pi/180)
+        target_x: int = self.moon_coords[0] - 512*self.moon_size*np.sin((shuttle_angle) * np.pi/180)
+        target_y: int = self.moon_coords[1] + 512*self.moon_size*np.cos((shuttle_angle) * np.pi/180)
 
         return abs( np.sqrt( shuttle_x**2 + shuttle_y**2 ) - np.sqrt( moon_x**2 + moon_y**2 ) )     <=  self.moon_size*600 \
            and abs( np.sqrt( shuttle_x**2 + shuttle_y**2 ) - np.sqrt( moon_x**2 + moon_y**2 ) )     >   self.moon_size*430 \
@@ -257,7 +308,7 @@ class Environment():
 
         # Get the shuttle and flag coordinates
         shuttle_x, shuttle_y = self.shuttle_agent.get_coords()
-        flag_x, flag_y       = self.flag_coords
+        flag_x, flag_y      = self.flag_coords
 
         return abs( np.sqrt( shuttle_x**2 + shuttle_y**2 ) - np.sqrt( flag_x**2 + flag_y**2 ) ) <=  self.flag_size*2000
 
@@ -268,7 +319,9 @@ class Environment():
     #######################################################################################################################################
 
 
-    def reset(self, angle = 90, flag_angle = 90):
+    def reset(self, 
+              angle:      int = 90, 
+              flag_angle: int = 90):
         """
         Reset the episode state
 
@@ -284,41 +337,70 @@ class Environment():
         state: tuple
             The initial state
         """
-        self.__initialized = True
+        self.__initialized: bool = True
         # Initialize the images angle
-        self.earth_angle   = 0
-        self.moon_angle    = 0
-        self.flag_angle    = flag_angle - 90
+        self.earth_angle:    int = 0
+        self.moon_angle:     int = 0
+        self.flag_angle:     int = flag_angle - 90
 
         # Initialize the images coordinates
-        self.earth_coords   = (150, 150)
-        self.moon_coords    = (900, 900)
-        self.flag_coords    = (self.moon_coords[0] - 512*self.moon_size*np.sin((self.flag_angle) * np.pi/180) ,
-                               self.moon_coords[1] + 512*self.moon_size*np.cos((self.flag_angle) * np.pi/180) )
+        self.earth_coords: tuple = (150, 150)
+        self.moon_coords:  tuple = (900, 900)
+        self.flag_coords:  tuple = (self.moon_coords[0] - 512*self.moon_size*np.sin((self.flag_angle) * np.pi/180) ,
+                                    self.moon_coords[1] + 512*self.moon_size*np.cos((self.flag_angle) * np.pi/180) )
 
         # Initializate the fire to deactivate
         # (left, main, right)
-        self.actives_fire = [False, False, False]
+        self.actives_fire: list = [False, False, False]
 
         # Initialize the shuttle agent
         self.shuttle_agent = Agent(angle, self.earth_size, self.earth_coords)
 
-        self.done   = False
-        self.landed = False
+        self.done:   bool = False
+        self.landed: bool = False
 
         return self.__state()
 
-    def step(self, action, alpha):
+    def step(self, 
+             action: list, 
+             alpha:  float):
+        """
+        Method to take an action
+
+        Parameters
+        ----------
+        action: list
+            List containg the power of the engines to use
+            Values between 0 and 1
+            The engine is active when the data are greater than 0.5
+        alpha: float
+            The inertia factor
+
+        Returns
+        -------
+        observation: tuple
+            Shuttle state containing 7 values: 
+            (x_coord, y_coord, angle, speed_x, speed_y, angular_speed, fuel)
+        reward: int
+            The reward of taking the action in the current state
+        done: bool
+            Boolean which indicates that the episode is ended
+        landed: bool
+            Boolean which indicates that the shuttle is landed safely
+        """
+        
         # If the episode is still going on
         if self.__initialized and not self.done:
             # Take the action
-            self.shuttle_agent.step(action, alpha)
-            self.actives_fire = [action[0] > 0.5, action[1] > 0.5, action[2] > 0.5]
+            left_speed, middle_speed, right_speed = self.shuttle_agent.step(action, alpha)
+            
+            # Determine the active engines
+            self.actives_fire: list = [left_speed > 0, middle_speed > 0, right_speed > 0]
 
             # Update the internal informations
-            self.done   = self.__is_done()
-            self.landed = self.__is_landed()
-            reward      = self.__reward()
+            self.done:   bool = self.__is_done()
+            self.landed: bool = self.__is_landed()
+            reward:      int  = self.__reward()
 
             return self.__state(), reward, self.done, self.landed
 
@@ -329,7 +411,9 @@ class Environment():
         print("Call Reset function first!!!")
         return None, None, None, None
 
-    def render(self, array=False, debug=False):
+    def render(self, 
+               array: bool = False, 
+               debug: bool = False):
         """
         Method to render the current state
 
@@ -351,13 +435,13 @@ class Environment():
             earth, moon, flag, shuttle, fire_main, fire_left, fire_right, explosion = self.__rotate()
 
             # Get the shuttle coordinates
-            shuttle_coords = self.shuttle_agent.get_coords()
+            shuttle_coords: tuple = self.shuttle_agent.get_coords()
 
             # Recover the shuttle informations
-            angle        = self.shuttle_agent.get_angle()*np.pi/180
-            sin_angle    = np.sin(angle)
-            cos_angle    = np.cos(angle)
-            shuttle_size = 512*self.shuttle_size
+            angle:        float = self.shuttle_agent.get_angle()*np.pi/180
+            sin_angle:    float = np.sin(angle)
+            cos_angle:    float = np.cos(angle)
+            shuttle_size: float = 512*self.shuttle_size
 
             # Determine the fire offsets
             main_fire_angle_offset      = np.array([ (shuttle_size + 5)  *sin_angle, -(shuttle_size + 5)  *cos_angle ])
@@ -410,12 +494,12 @@ class Environment():
             # If debug draw the collision boxes
             if debug:
                 # Obtain the shuttle informations
-                shuttle_x, shuttle_y = self.shuttle_agent.get_coords()
-                shuttle_angle        = self.shuttle_agent.get_angle()
+                shuttle_x, shuttle_y       = self.shuttle_agent.get_coords()
+                shuttle_angle:       float = self.shuttle_agent.get_angle()
 
                 # Determine the target position for the safe landing
-                target_x = self.moon_coords[0] - 512*self.moon_size*np.sin((shuttle_angle) * np.pi/180)
-                target_y = self.moon_coords[1] + 512*self.moon_size*np.cos((shuttle_angle) * np.pi/180)
+                target_x: int = self.moon_coords[0] - 512*self.moon_size*np.sin((shuttle_angle) * np.pi/180)
+                target_y: int = self.moon_coords[1] + 512*self.moon_size*np.cos((shuttle_angle) * np.pi/180)
 
                 # Draw the collision boxes for the penalities
                 ax.add_patch( patches.Circle(self.earth_coords, self.earth_size*430, edgecolor='red', facecolor="None", lw=3, zorder=5))
