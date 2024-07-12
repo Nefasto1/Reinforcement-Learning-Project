@@ -22,13 +22,17 @@ class Agent():
     def __init__(self, 
                  angle:        int, 
                  earth_size:   int, 
-                 earth_coords: tuple
+                 earth_coords: tuple,
+                 inertia:      float
                 ):
         # Initialize the Agent information with the input data
-        self.angle:  int   = angle
-        self.coords: tuple = (earth_coords[0] - 512*earth_size*np.sin((self.angle - 90) * np.pi/180) ,
-                              earth_coords[1] + 512*earth_size*np.cos((self.angle - 90) * np.pi/180) )
+        self.angle: int = angle
 
+        shuttle_x = earth_coords[0] - 512*earth_size*np.sin((self.angle - 90) * np.pi/180)
+        shuttle_y = earth_coords[0] - 512*earth_size*np.cos((self.angle - 90) * np.pi/180)
+        self.coords: tuple = (shuttle_x, shuttle_x)
+
+        self.inertia:       float = inertia
         self.speed:         tuple = (0, 0)
         self.angular_speed: float = 0
         self.fuel:          int   = 200
@@ -78,8 +82,7 @@ class Agent():
         return left_speed, middle_speed, right_speed
 
     def step(self, 
-             action: int, 
-             alpha:  float
+             action: int
             ):
         # Determine if the engines are over 0.5 and get their shifted value
         left_speed   = (action[0] > 0.5) * (action[0] - 0.5)
@@ -94,12 +97,12 @@ class Agent():
         ##################################################################################################
         
         # Determine the angular speed and update the shuttle angle
-        self.angular_speed = self.angular_speed*alpha + left_speed * 5 - right_speed * 5                      
+        self.angular_speed = self.angular_speed*self.inertia + left_speed * 5 - right_speed * 5                      
         self.angle += self.angular_speed
 
         # Determine the new shuttle speed
-        new_x_speed = (self.speed[0]*alpha + left_speed *0.6 + middle_speed * np.cos(self.angle*np.pi/180)*1.4)
-        new_y_speed = (self.speed[1]*alpha + right_speed*0.6 + middle_speed * np.sin(self.angle*np.pi/180)*1.4)
+        new_x_speed = (self.speed[0]*self.inertia + left_speed *0.6 + middle_speed * np.cos(self.angle*np.pi/180)*1.4)
+        new_y_speed = (self.speed[1]*self.inertia + right_speed*0.6 + middle_speed * np.sin(self.angle*np.pi/180)*1.4)
         self.speed = (new_x_speed, new_y_speed)
 
         # Update the shuttle coordinates
@@ -320,8 +323,10 @@ class Environment():
 
 
     def reset(self, 
-              angle:      int = 90, 
-              flag_angle: int = 90):
+              angle:      int   = 90, 
+              flag_angle: int   = 90,
+              inertia:    float = 0.
+             ):
         """
         Reset the episode state
 
@@ -331,6 +336,8 @@ class Environment():
             The angle of the shuttle
         flag_angle: int
             The angle of the flag
+        inertia: float
+            The inertia of the system
 
         Returns
         -------
@@ -354,7 +361,7 @@ class Environment():
         self.actives_fire: list = [False, False, False]
 
         # Initialize the shuttle agent
-        self.shuttle_agent = Agent(angle, self.earth_size, self.earth_coords)
+        self.shuttle_agent = Agent(angle, self.earth_size, self.earth_coords, inertia)
 
         self.done:   bool = False
         self.landed: bool = False
@@ -362,8 +369,8 @@ class Environment():
         return self.__state()
 
     def step(self, 
-             action: list, 
-             alpha:  float):
+             action: list
+            ):
         """
         Method to take an action
 
@@ -373,7 +380,7 @@ class Environment():
             List containg the power of the engines to use
             Values between 0 and 1
             The engine is active when the data are greater than 0.5
-        alpha: float
+        inertia: float
             The inertia factor
 
         Returns
@@ -392,7 +399,7 @@ class Environment():
         # If the episode is still going on
         if self.__initialized and not self.done:
             # Take the action
-            left_speed, middle_speed, right_speed = self.shuttle_agent.step(action, alpha)
+            left_speed, middle_speed, right_speed = self.shuttle_agent.step(action)
             
             # Determine the active engines
             self.actives_fire: list = [left_speed > 0, middle_speed > 0, right_speed > 0]
@@ -521,9 +528,6 @@ class Environment():
             # Otherwise plot the element
             if array:
                 fig.canvas.draw()
-                # print(np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8).shape)
-                # print(np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8).shape)
-                # data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
                 data = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8)
                 data = data.reshape(fig.canvas.get_width_height()[::-1] + (4,))[:, :, :3]
 
