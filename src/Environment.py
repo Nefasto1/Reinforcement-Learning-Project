@@ -25,12 +25,24 @@ class Agent():
                  earth_coords: tuple,
                  inertia:      float
                 ):
+
         # Initialize the Agent information with the input data
         self.angle: int = angle
 
+        self.w = 50
+        self.h = 100
+        self.r1 = (-self.w/2, -self.h/2)
+        self.r2 = (0,         -self.h/2)
+        self.r3 = (self.w/2,  -self.h/2)
+        self.alpha1 = 45  #(alpha)
+        self.alpha2 = 90
+        self.alpha3 = 135 #(180-alpha)
+        self.m      = 100
+
         shuttle_x = earth_coords[0] - 512*earth_size*np.sin((self.angle - 90) * np.pi/180)
-        shuttle_y = earth_coords[0] - 512*earth_size*np.cos((self.angle - 90) * np.pi/180)
-        self.coords: tuple = (shuttle_x, shuttle_x)
+        shuttle_y = earth_coords[0] + 512*earth_size*np.cos((self.angle - 90) * np.pi/180)
+        
+        self.coords: tuple = (shuttle_x, shuttle_y)
 
         self.inertia:       float = inertia
         self.speed:         tuple = (0, 0)
@@ -85,28 +97,55 @@ class Agent():
              action: int
             ):
         # Determine if the engines are over 0.5 and get their shifted value
-        left_speed   = (action[0] > 0.5) * (action[0] - 0.5)
-        middle_speed = (action[1] > 0.5) * (action[1] - 0.5)
-        right_speed  = (action[2] > 0.5) * (action[2] - 0.5)
+        F1_mod = (action[0] > 0.5) * (action[0] - 0.5)
+        F2_mod = (action[1] > 0.5) * (action[1] - 0.5)
+        F3_mod = (action[2] > 0.5) * (action[2] - 0.5)
 
         # Update the fuel counter and check if the engines can be activated
-        left_speed, middle_speed, right_speed = self.__update_fuel(left_speed, middle_speed, right_speed)
-
+        F1_mod, F2_mod, F3_mod = self.__update_fuel(F1_mod, F2_mod, F3_mod)
+        
         ##################################################################################################
         ##                                        CHECK THE PHYSICS                                     ##
         ##################################################################################################
-        
         # Determine the angular speed and update the shuttle angle
-        self.angular_speed = self.angular_speed*self.inertia + left_speed * 5 - right_speed * 5                      
-        self.angle += self.angular_speed
+
+        F1 = [F1_mod * np.cos(self.alpha1 * np.pi/180),
+              F1_mod * np.sin(self.alpha1 * np.pi/180)]
+        F2 = [F2_mod * np.cos(self.alpha2 * np.pi/180),
+              F2_mod * np.sin(self.alpha2 * np.pi/180)]
+        F3 = [F3_mod * np.cos(self.alpha3 * np.pi/180),
+              F3_mod * np.sin(self.alpha3 * np.pi/180)]
+        
+        F_net_x = F1[0] + F2[0] + F3[0]
+        F_net_y = F1[1] + F2[1] + F3[1]
+
+        a_COM_x = F_net_x / self.m
+        a_COM_y = F_net_y / self.m
+
+        tau_net = 0
+        tau_net += self.r1[0]*F1[1] - self.r1[1]*F1[0]
+        tau_net += self.r2[0]*F1[1] - self.r2[1]*F1[0]
+        tau_net += self.r3[0]*F1[1] - self.r3[1]*F1[0]
+
+        I = self.m * (self.w**2 + self.h**2) / 12
+
+        theta_acc = tau_net / I
+
+
+        
+
+        
+        
+        # self.angular_speed = self.angular_speed*self.inertia + left_speed * 5 - right_speed * 5                      
+        # self.angle += self.angular_speed
 
         # Determine the new shuttle speed
-        new_x_speed = (self.speed[0]*self.inertia + left_speed *0.6 + middle_speed * np.cos(self.angle*np.pi/180)*1.4)
-        new_y_speed = (self.speed[1]*self.inertia + right_speed*0.6 + middle_speed * np.sin(self.angle*np.pi/180)*1.4)
-        self.speed = (new_x_speed, new_y_speed)
+        # new_x_speed = (self.speed[0]*self.inertia + left_speed *0.6 + middle_speed * np.cos(self.angle*np.pi/180)*1.4)
+        # new_y_speed = (self.speed[1]*self.inertia + right_speed*0.6 + middle_speed * np.sin(self.angle*np.pi/180)*1.4)
+        # self.speed = (new_x_speed, new_y_speed)
 
-        # Update the shuttle coordinates
-        self.coords = (self.coords[0] + self.speed[0]*20, self.coords[1] + self.speed[1]*20)
+        # # Update the shuttle coordinates
+        # self.coords = (self.coords[0] + self.speed[0]*20, self.coords[1] + self.speed[1]*20)
 
         return left_speed, middle_speed, right_speed
 
@@ -270,7 +309,7 @@ class Environment():
         moon_x, moon_y       = self.moon_coords
         earth_x, earth_y     = self.earth_coords
 
-        return self.shuttle_agent.get_fuel() <= 0 \
+        return self.shuttle_agent.get_fuel() < 2 \
             or shuttle_x < 0 or shuttle_x > self.image_size \
             or shuttle_y < 0 or shuttle_y > self.image_size \
             or abs( np.sqrt( shuttle_x**2 + shuttle_y**2 ) - np.sqrt( moon_x**2  + moon_y**2  ) ) <=  self.moon_size*430 \
