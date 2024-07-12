@@ -39,6 +39,9 @@ class Agent():
         self.alpha3 = 135 #(180-alpha)
         self.m      = 100
 
+        self.theta_acc = 0
+        self.theta_vel = 0
+
         shuttle_x = earth_coords[0] - 512*earth_size*np.sin((self.angle - 90) * np.pi/180)
         shuttle_y = earth_coords[0] + 512*earth_size*np.cos((self.angle - 90) * np.pi/180)
         
@@ -47,7 +50,7 @@ class Agent():
         self.inertia:       float = inertia
         self.speed:         tuple = (0, 0)
         self.angular_speed: float = 0
-        self.fuel:          int   = 200
+        self.fuel:          int   = 1000
 
     def __update_fuel(self, 
                       left_speed:   float, 
@@ -124,16 +127,29 @@ class Agent():
 
         tau_net = 0
         tau_net += self.r1[0]*F1[1] - self.r1[1]*F1[0]
-        tau_net += self.r2[0]*F1[1] - self.r2[1]*F1[0]
-        tau_net += self.r3[0]*F1[1] - self.r3[1]*F1[0]
+        tau_net += self.r2[0]*F2[1] - self.r2[1]*F2[0]
+        tau_net += self.r3[0]*F3[1] - self.r3[1]*F3[0]
+
 
         I = self.m * (self.w**2 + self.h**2) / 12
 
-        theta_acc = tau_net / I
+        #######################################################
+        ##              test update theta                    ##
+        #######################################################
+        theta_acc = self.theta_acc*self.inertia + tau_net #/ I        La dimensione incide troppo sull'angolo (accellerazione nulla e non ruota mai)
+        theta_vel = self.theta_vel*self.inertia + theta_acc
+        self.angle += theta_vel / 5                                 # non dividendo e potenza 0.9 ruota troppo veloce, dividendo per 10 diventa lento, 5 sembra un buon trade of
+                                                                    # Da sostituire alla I???
 
+        # Test aggiornamento coordinate
+        # Converto le componenti x e y dal sistema di riferimento dello shuttle a quelle del sistema
+        # moltiplico a_COM_x e a_COM_y per 100 (equivalenet ead usare F_net_x) perché la massa incide troppo sul movimento e rimane fermo
+        speed_x = self.speed[0]*self.inertia + 100*a_COM_x*np.cos(self.angle * np.pi /180) + 100*a_COM_y * np.cos(self.angle * np.pi / 180) 
+        speed_y = self.speed[1]*self.inertia + 100*a_COM_x*np.sin(self.angle * np.pi /180) + 100*a_COM_y * np.sin(self.angle * np.pi / 180)
 
+        self.speed = (speed_x, speed_y)
         
-
+        self.coords = (self.coords[0] + speed_x*20, self.coords[1] + speed_y*20)
         
         
         # self.angular_speed = self.angular_speed*self.inertia + left_speed * 5 - right_speed * 5                      
@@ -147,7 +163,7 @@ class Agent():
         # # Update the shuttle coordinates
         # self.coords = (self.coords[0] + self.speed[0]*20, self.coords[1] + self.speed[1]*20)
 
-        return left_speed, middle_speed, right_speed
+        return F1_mod, F2_mod, F3_mod
 
         ##################################################################################################
         ##                                        CHECK THE PHYSICS                                     ##
