@@ -10,9 +10,9 @@ def integrate_dynamic_step(theta_vel_0, theta_0, theta_acc,
         com_vel = com_vel_0 + com_acc * dt
         com = com_0 + com_vel * dt        
 
-        return theta_vel, theta, com_vel, com_vel, com
+        return theta_vel, theta, com_vel, com
 
-def dynamic_step(action: int,
+def dynamic_step(F1_mod: float, F2_mod:float, F3_mod: float, 
                  alpha1: float, alpha2: float, alpha3: float,
                  mass: float, width: float, height: float,
                  r1: tuple, r2: tuple, r3: tuple,
@@ -20,11 +20,6 @@ def dynamic_step(action: int,
                  com_vel_0: np.array, com_0: np.array,
                  dt: float):
         
-        # Determine if the engines are over 0.5 and get their shifted value
-        F1_mod = (action[0] > 0.5) * (action[0] - 0.5)
-        F2_mod = (action[1] > 0.5) * (action[1] - 0.5)
-        F3_mod = (action[2] > 0.5) * (action[2] - 0.5)
-
         F1 = F1_mod * np.array([np.cos(alpha1 * np.pi/180),
                                 np.sin(alpha1 * np.pi/180)])
         
@@ -46,10 +41,12 @@ def dynamic_step(action: int,
         
         theta_acc = tau_net / I
         com_acc = F_net / mass
-        dt = 1
+
+        com_acc_projected =  com_acc * np.array([np.cos(theta_0 * np.pi/180),
+                                                 np.sin(theta_0 * np.pi/180)])
 
         theta_vel, theta, com_vel, com = integrate_dynamic_step(theta_vel_0, theta_0, theta_acc,
-                                                                com_vel_0, com_0, com_acc,
+                                                                com_vel_0, com_0, com_acc_projected,
                                                                 dt)
 
         return theta_vel, theta, com_vel, com

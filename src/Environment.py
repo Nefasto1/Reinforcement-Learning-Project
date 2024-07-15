@@ -14,6 +14,8 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox # To Resize and add
 
 from PIL import Image                                        # To Rotate the images
 
+from src.dynamics import dynamic_step    # To simulate the dynamics
+
 ###########################################################
 ##                   AGENT DEFINITION                    ##
 ###########################################################
@@ -46,10 +48,10 @@ class Agent():
         
         self.coords: tuple = (shuttle_x, shuttle_y)
 
-        self.inertia:       float = inertia
         self.speed:         tuple = (0, 0)
         self.angular_speed: float = 0
         self.fuel:          int   = 1000
+        self.dt:            float = 1        
 
     def __update_fuel(self, 
                       left_speed:   float, 
@@ -98,6 +100,7 @@ class Agent():
     def step(self, 
              action: int
             ):
+        
         # Determine if the engines are over 0.5 and get their shifted value
         F1_mod = (action[0] > 0.5) * (action[0] - 0.5)
         F2_mod = (action[1] > 0.5) * (action[1] - 0.5)
@@ -105,68 +108,18 @@ class Agent():
 
         # Update the fuel counter and check if the engines can be activated
         F1_mod, F2_mod, F3_mod = self.__update_fuel(F1_mod, F2_mod, F3_mod)
+
+        # Dynamic step
+        self.theta_vel, self.angle, self.speed, self.cord = dynamic_step(F1_mod, F2_mod, F3_mod,
+                                                                         self.alpha1, self.alpha2, self.alpha3,
+                                                                         self.m, self.w, self.h,
+                                                                         self.r1, self.r2, self.r3,
+                                                                         self.theta_vel, self.angle,
+                                                                         self.speed, self.coords,
+                                                                         self.dt)
         
-        ##################################################################################################
-        ##                                        CHECK THE PHYSICS                                     ##
-        ##################################################################################################
-        # Determine the angular speed and update the shuttle angle
-
-        F1 = [F1_mod * np.cos(self.alpha1 * np.pi/180),
-              F1_mod * np.sin(self.alpha1 * np.pi/180)]
-        F2 = [F2_mod * np.cos(self.alpha2 * np.pi/180),
-              F2_mod * np.sin(self.alpha2 * np.pi/180)]
-        F3 = [F3_mod * np.cos(self.alpha3 * np.pi/180),
-              F3_mod * np.sin(self.alpha3 * np.pi/180)]
-        
-        F_net_x = F1[0] + F2[0] + F3[0]
-        F_net_y = F1[1] + F2[1] + F3[1]
-
-        a_COM_x = F_net_x / self.m
-        a_COM_y = F_net_y / self.m
-
-        tau_net = 0
-        tau_net += self.r1[0]*F1[1] - self.r1[1]*F1[0]
-        tau_net += self.r2[0]*F2[1] - self.r2[1]*F2[0]
-        tau_net += self.r3[0]*F3[1] - self.r3[1]*F3[0]
-
-
-        I = self.m * (self.w**2 + self.h**2) / 12
-
-        #######################################################
-        ##              test update theta                    ##
-        #######################################################
-        theta_acc = self.theta_acc*self.inertia + tau_net #/ I        La dimensione incide troppo sull'angolo (accellerazione nulla e non ruota mai)
-        theta_vel = self.theta_vel*self.inertia + theta_acc
-        self.angle += theta_vel                                     # non dividendo e potenza 0.9 ruota troppo veloce, dividendo per 10 diventa lento, 5 sembra un buon trade of
-                                                                    # Da sostituire alla I???
-
-        # Test aggiornamento coordinate
-        # Converto le componenti x e y dal sistema di riferimento dello shuttle a quelle del sistema
-        # moltiplico a_COM_x e a_COM_y per 100 (equivalenet ead usare F_net_x) perché la massa incide troppo sul movimento e rimane fermo
-        speed_x = self.speed[0]*self.inertia + 100*a_COM_x*np.cos(self.angle * np.pi /180) + 100*a_COM_y * np.cos(self.angle * np.pi / 180) 
-        speed_y = self.speed[1]*self.inertia + 100*a_COM_x*np.sin(self.angle * np.pi /180) + 100*a_COM_y * np.sin(self.angle * np.pi / 180)
-
-        self.speed = (speed_x, speed_y)
-        
-        self.coords = (self.coords[0] + speed_x*30, self.coords[1] + speed_y*30)
-        
-        
-        # self.angular_speed = self.angular_speed*self.inertia + left_speed * 5 - right_speed * 5                      
-        # self.angle += self.angular_speed
-
-        # Determine the new shuttle speed
-        # new_x_speed = (self.speed[0]*self.inertia + left_speed *0.6 + middle_speed * np.cos(self.angle*np.pi/180)*1.4)
-        # new_y_speed = (self.speed[1]*self.inertia + right_speed*0.6 + middle_speed * np.sin(self.angle*np.pi/180)*1.4)
-        # self.speed = (new_x_speed, new_y_speed)
-
-        # # Update the shuttle coordinates
-        # self.coords = (self.coords[0] + self.speed[0]*20, self.coords[1] + self.speed[1]*20)
-
         return F1_mod, F2_mod, F3_mod
 
-        ##################################################################################################
-        ##                                        CHECK THE PHYSICS                                     ##
-        ##################################################################################################
     
     def get_angle(self):
         return self.angle-90
