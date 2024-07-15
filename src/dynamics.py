@@ -11,6 +11,13 @@ def integrate_dynamic_step(theta_vel_0, theta_0, theta_acc,
         com = com_0 + com_vel * dt        
 
         return theta_vel, theta, com_vel, com
+def integrate_dynamic_step2(vel_0, x_0, acc,
+                           dt):
+        
+        vel = vel_0 + acc * dt
+        x = x_0 + vel * dt
+
+        return vel, x
 
 def dynamic_step(F1_mod: float, F2_mod:float, F3_mod: float, 
                  alpha1: float, alpha2: float, alpha3: float,
@@ -31,7 +38,7 @@ def dynamic_step(F1_mod: float, F2_mod:float, F3_mod: float,
         
         #F_grav = np.array([0, -9.81]) * mass/ distanza_terra^2 + np.array([0, -9.81]) * mass/ distanza_luna^2
 
-        F_net = F1 + F2 + F3
+        F_net = F1*0.5 + F2 + F3*0.5
 
         tau_net = np.sum([r1[0]*F1[1] - r1[1]*F1[0],
                           r2[0]*F2[1] - r2[1]*F2[0],
@@ -39,14 +46,18 @@ def dynamic_step(F1_mod: float, F2_mod:float, F3_mod: float,
 
         I = mass * (width**2 + height**2) / 12
         
-        theta_acc = tau_net / I
-        com_acc = F_net / mass
+        theta_acc = tau_net /20#/ I
+        com_acc = F_net /20#/ mass
 
-        com_acc_projected =  com_acc * np.array([np.cos(theta_0 * np.pi/180),
-                                                 np.sin(theta_0 * np.pi/180)])
-
-        theta_vel, theta, com_vel, com = integrate_dynamic_step(theta_vel_0, theta_0, theta_acc,
-                                                                com_vel_0, com_0, com_acc_projected,
+        theta_vel, theta = integrate_dynamic_step2(theta_vel_0, theta_0, theta_acc,
+                                                                dt)
+    
+        com_acc_projected =  com_acc * np.array([np.cos(theta * np.pi/180),
+                                                 np.sin(theta * np.pi/180)])
+        com_acc_projected +=  com_acc[::-1] * np.array([np.cos(theta * np.pi/180),
+                                                 np.sin(theta * np.pi/180)])
+    
+        com_vel, com = integrate_dynamic_step2(com_vel_0, com_0, com_acc_projected,
                                                                 dt)
 
         return theta_vel, theta, com_vel, com
