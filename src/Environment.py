@@ -415,6 +415,7 @@ class Environment():
         # If the episode is still going on
         if self.__initialized and not self.done:
             # Take the action
+            initial_coords = self.shuttle_agent.get_coords()
             left_speed, middle_speed, right_speed = self.shuttle_agent.step(action)
             
             # Determine the active engines
@@ -424,6 +425,8 @@ class Environment():
             self.done:   bool = self.__is_done()
             self.landed: bool = self.__is_landed()
             reward:      int  = self.__reward()
+
+            final_coords = self.shuttle_agent.get_coords()
             
             if initial_coords == final_coords:
                 self.stall += 1
