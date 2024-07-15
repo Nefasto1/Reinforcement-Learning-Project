@@ -287,7 +287,8 @@ class Environment():
             or shuttle_x < 0 or shuttle_x > self.image_size \
             or shuttle_y < 0 or shuttle_y > self.image_size \
             or np.sqrt( (shuttle_x-moon_x) **2 + (shuttle_y-moon_y) **2 ) <=  self.moon_size*430 \
-            or np.sqrt( (shuttle_x-earth_x)**2 + (shuttle_y-earth_y)**2 ) <=  self.earth_size*430
+            or np.sqrt( (shuttle_x-earth_x)**2 + (shuttle_y-earth_y)**2 ) <=  self.earth_size*430 \
+            or self.stall > 100
 
     def __is_landed(self):
         """
@@ -378,7 +379,9 @@ class Environment():
 
         self.done:   bool = False
         self.landed: bool = False
-
+                 
+        self.stall: int = 0
+        
         return self.__state()
 
     def step(self, 
@@ -421,6 +424,11 @@ class Environment():
             self.done:   bool = self.__is_done()
             self.landed: bool = self.__is_landed()
             reward:      int  = self.__reward()
+            
+            if initial_coords == final_coords:
+                self.stall += 1
+            else:
+                self.stall = 0
 
             return self.__state(), reward, self.done, self.landed
 
