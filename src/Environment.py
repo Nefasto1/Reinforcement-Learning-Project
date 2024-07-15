@@ -40,13 +40,15 @@ class Agent():
         self.alpha2 = 90
         self.alpha3 = 135 #(180-alpha)
         self.m      = 100
+        self.earth_coords: np.array = np.array((150, 150))
+        self.moon_coords:  np.array = np.array((900, 900))
         
         self.theta_vel = 0
 
         shuttle_x = earth_coords[0] - 512*earth_size*np.sin((self.angle - 90) * np.pi/180)
         shuttle_y = earth_coords[0] + 512*earth_size*np.cos((self.angle - 90) * np.pi/180)
         
-        self.coords: tuple = (shuttle_x, shuttle_y)
+        self.coords: np.array = np.array((shuttle_x, shuttle_y))
 
         self.speed:         tuple = (0, 0)
         self.angular_speed: float = 0
@@ -116,6 +118,7 @@ class Agent():
                                                                          self.r1, self.r2, self.r3,
                                                                          self.theta_vel, self.angle,
                                                                          self.speed, self.coords,
+                                                                         self.moon_coords, self.earth_coords,
                                                                          self.dt)
         
         return F1_mod, F2_mod, F3_mod
