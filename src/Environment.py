@@ -110,7 +110,7 @@ class Agent():
         F1_mod, F2_mod, F3_mod = self.__update_fuel(F1_mod, F2_mod, F3_mod)
 
         # Dynamic step
-        self.theta_vel, self.angle, self.speed, self.cord = dynamic_step(F1_mod, F2_mod, F3_mod,
+        self.theta_vel, self.angle, self.speed, self.coords = dynamic_step(F1_mod, F2_mod, F3_mod,
                                                                          self.alpha1, self.alpha2, self.alpha3,
                                                                          self.m, self.w, self.h,
                                                                          self.r1, self.r2, self.r3,
