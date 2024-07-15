@@ -38,8 +38,7 @@ class Agent():
         self.alpha2 = 90
         self.alpha3 = 135 #(180-alpha)
         self.m      = 100
-
-        self.theta_acc = 0
+        
         self.theta_vel = 0
 
         shuttle_x = earth_coords[0] - 512*earth_size*np.sin((self.angle - 90) * np.pi/180)
