@@ -251,6 +251,12 @@ class Environment():
             reward += 100
         if self.__is_landed():
             reward += 100
+            
+        shuttle_x, shuttle_y = self.shuttle_agent.get_coords()
+        flag_x, flag_y       = self.moon_coords
+        reward -= np.sqrt( (shuttle_x-flag_x) **2 + (shuttle_y-flag_y) **2 )/100
+        reward -= abs(self.shuttle_agent.get_angle() - self.flag_angle) * 10
+        reward -= self.stall * 10000
 
         return reward
 
