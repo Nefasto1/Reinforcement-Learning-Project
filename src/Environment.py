@@ -427,8 +427,8 @@ class Environment():
             reward:      int  = self.__reward()
 
             final_coords = self.shuttle_agent.get_coords()
-            
-            if initial_coords == final_coords:
+
+            if initial_coords[0] == final_coords[0] and initial_coords[1] == final_coords[1]:
                 self.stall += 1
             else:
                 self.stall = 0
