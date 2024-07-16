@@ -41,7 +41,7 @@ def dynamic_step(F1_mod: float, F2_mod:float, F3_mod: float,
         #distance_shuttle_moon = np.sqrt(np.sum(com_0 - moon_coords)**2)
         #distance_shuttle_earth = np.sqrt(np.sum(com_0 - earth_coords)**2)
 
-        #G = 6.674*10**(-11) # Gravitational constant
+        #G = 6.674*1e-11 # Gravitational constant
         #unit_vector_shuttle_moon = (com_0 - moon_coords)/distance_shuttle_moon
         #unit_vector_shuttle_earth = (com_0 - earth_coords)/distance_shuttle_moon
 
