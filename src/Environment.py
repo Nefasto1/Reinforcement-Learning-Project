@@ -152,7 +152,7 @@ class Environment():
         self.__load_assets()
 
         # Initialize the images size
-        self.image_size:   int   = 1000
+        self.image_size:   int   = 1300
         self.earth_size:   float = 1/4
         self.moon_size:    float = 1/8
         self.shuttle_size: float = 1/16
@@ -538,6 +538,11 @@ class Environment():
                 # Draw the collision boxes for the penalities
                 ax.add_patch( patches.Circle(self.earth_coords, self.earth_size*430, edgecolor='red', facecolor="None", lw=3, zorder=5))
                 ax.add_patch( patches.Circle(self.moon_coords,  self.moon_size*430,  edgecolor='red', facecolor="None", lw=3, zorder=5))
+                
+                ax.add_patch( patches.Circle(self.moon_coords,  80,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                ax.add_patch( patches.Circle(self.earth_coords, 140,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                ax.add_patch( patches.Circle(self.moon_coords,  200,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                ax.add_patch( patches.Circle(self.earth_coords, 400,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
 
                 ax.axvline(0,               color="red", lw=3, zorder=5)
                 ax.axvline(self.image_size, color="red", lw=3, zorder=5)
