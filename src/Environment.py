@@ -31,9 +31,9 @@ class Agent():
         # Initialize the Agent information with the input data
         self.angle: int = angle
 
-        self.w = 50
+        self.w = 10
         self.h = 100
-        self.m = 100
+        self.m = 1000
         
         self.r1 = (-self.w/2, -self.h/2)
         self.r2 = (0,         -self.h/2)

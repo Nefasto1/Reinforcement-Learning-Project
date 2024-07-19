@@ -34,52 +34,36 @@ def dynamic_step(F1_mod: float, F2_mod:float, F3_mod: float,
 
         #Constants
         G                   = 6.674 * 1e-11 # N m^2 kg^-2
-        mass_moon           = 7.342 * 1e20  # kg
+        mass_moon           = 7.342 * 1e22  # kg
         mass_earth          = 5.972 * 1e24  # kg
         pixel_side          = 3.624 * 1e5   # m
         
         distance_shuttle_moon  = distance(com_0, moon_coords) * pixel_side 
         distance_shuttle_earth = distance(com_0, earth_coords) * pixel_side
-
-        print()
-        print(com_0)
-        # print(distance_shuttle_moon)
-        # print(distance_shuttle_earth)
-
-        # print(np.arccos((moon_coords - com_0)[1]/distance(com_0, moon_coords)))
     
         F_grav_moon = G * mass_shuttle * mass_moon / distance_shuttle_moon**2
         beta  = np.arccos((moon_coords - com_0)[0]*pixel_side/distance_shuttle_moon) 
         if (moon_coords - com_0)[1] < 0:
             beta *= -1 
-        # print(f"beta : {beta  * 180 / np.pi}")
-        
-        # print()
+            
         F_grav_moon_x = F_grav_moon * np.cos(beta)
         F_grav_moon_y = F_grav_moon * np.sin(beta)
-        # print(F_grav_moon_x, F_grav_moon_y)
-
         
-        F_grav_earth = G * mass_shuttle * mass_earth / distance_shuttle_earth**2 / 1000
+        F_grav_earth = G * mass_shuttle * mass_earth / distance_shuttle_earth**2.5 ## !!! MODIFIED !!!
         gamma = np.arccos((earth_coords-com_0)[0]*pixel_side/distance_shuttle_earth)
         if (earth_coords - com_0)[1] < 0:
             gamma *= -1 
         F_grav_earth_x = F_grav_earth * np.cos(gamma)
         F_grav_earth_y = F_grav_earth * np.sin(gamma)
-        # print(F_grav_earth_x, F_grav_earth_y)
 
         F_grav = np.array((F_grav_moon_x + F_grav_earth_x,
                            F_grav_moon_y + F_grav_earth_y))
     
-        # print(F_grav)
         print((earth_coords[0]*F_grav_earth_y - earth_coords[1]*F_grav_earth_x))
         print(moon_coords[0]*F_grav_moon_y - moon_coords[1]*F_grav_moon_x)
         print(r1[0]*F1[1] - r1[1]*F1[0])
-        # print(F1)
                                          
-        F_net = 400*F1 + 800*F2 + 400*F3 #+ 400*F_grav
-        # print(F_grav/F_net *  100)
-
+        F_net = 400*F1 + 800*F2 + 400*F3
 
         tau_net = np.sum([r1[0]*F1[1] - r1[1]*F1[0],
                           r2[0]*F2[1] - r2[1]*F2[0],
@@ -101,9 +85,8 @@ def dynamic_step(F1_mod: float, F2_mod:float, F3_mod: float,
         com_acc_projected += com_acc[::-1] * np.array([np.cos(theta * np.pi/180),
                                                        np.sin(theta * np.pi/180)])
 
-        com_acc_projected += F_grav
+        com_acc_projected += F_grav / mass_shuttle
     
         com_vel, com = integrate_dynamic_step(com_vel_0, com_0, com_acc_projected, dt)
-        # print(com_vel)
 
         return theta_vel, theta, com_vel, com
