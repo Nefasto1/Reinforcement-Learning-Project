@@ -14,7 +14,7 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox # To Resize and add
 
 from PIL import Image                                        # To Rotate the images
 
-from src.dynamics import dynamic_step    # To simulate the dynamics
+from src.dynamics import dynamic_step, distance    # To simulate the dynamics
 
 ###########################################################
 ##                   AGENT DEFINITION                    ##
@@ -253,24 +253,51 @@ class Environment():
         """
 
         reward = 0
-        if self.actives_fire[0]:
-            reward -= 0.0025
-        if self.actives_fire[1]:
-            reward -= 0.005
-        if self.actives_fire[2]:
-            reward -= 0.0025
-
-        if self.__is_crashed():
-            reward -= 100000
-        if self.__is_near():
-            reward += 100000
-        if self.__is_landed():
-            reward += 100000
-
+        
         shuttle_x, shuttle_y = self.shuttle_agent.get_coords()
-        flag_x, flag_y       = self.moon_coords
+        flag_x, flag_y       = self.flag_coords
+        earth_x, earth_y     = self.earth_coords
+        moon_x, moon_y       = self.moon_coords
 
-        reward -= np.sqrt( (shuttle_x-flag_x) **2 + (shuttle_y-flag_y) **2 )  / 50 # Flag distance
+        #reward += np.sqrt( (shuttle_x-earth_x) **2 + (shuttle_y-earth_y) **2 )
+        #reward -= np.sqrt( (shuttle_x-flag_x) **2  + (shuttle_y-flag_y) **2  )
+
+        shuttle = np.array((shuttle_x, shuttle_y))
+        flag = np.array((flag_x, flag_y))
+        moon = np.array((moon_x, moon_y))
+        
+        d_flag = distance(shuttle, flag)
+        d_moon = distance(shuttle, moon)
+
+        reward += 10 if d_moon < 1050 else 0
+        reward += 10 if d_moon < 950 else 0
+        reward += 10 if d_moon < 850 else 0
+        reward += 10 if d_moon < 825 else 0
+        reward += 10 if d_moon < 750 else 0
+        reward += 10 if d_moon < 650 else 0
+        reward += 10 if d_moon < 550 else 0
+        reward += 10 if d_moon < 450 else 0
+        reward += 10 if d_moon < 350 else 0
+        reward += 10 if d_moon < 250 else 0
+        reward += 10 if d_moon < 150 else 0
+        
+        reward += 10 if d_flag < 350 else 0
+        reward += 10 if d_flag < 850 else 0
+        reward += 10 if d_flag < 150 else 0
+        reward += 10 if d_flag < 50  else 0
+
+        if self.actives_fire[0]:
+            reward *= 0.75
+        if self.actives_fire[1]:
+            reward *= 0.5
+        if self.actives_fire[2]:
+            reward *= 0.75
+
+        shuttle_angular_speed = self.shuttle_agent.get_angular_speed()
+        reward = reward if abs(shuttle_angular_speed) < 2 else 0
+
+
+        # reward -= np.sqrt( (shuttle_x-flag_x) **2 + (shuttle_y-flag_y) **2 )  / 50 # Flag distance
         # reward -= abs(self.shuttle_agent.get_angle() - self.flag_angle)      /500# Angle difference
         # reward -= abs(self.shuttle_agent.get_angular_speed()) * 10                 # Angle difference
 

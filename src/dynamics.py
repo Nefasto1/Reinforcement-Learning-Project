@@ -59,17 +59,13 @@ def dynamic_step(F1_mod: float, F2_mod:float, F3_mod: float,
         F_grav = np.array((F_grav_moon_x + F_grav_earth_x,
                            F_grav_moon_y + F_grav_earth_y))
     
-        print((earth_coords[0]*F_grav_earth_y - earth_coords[1]*F_grav_earth_x))
-        print(moon_coords[0]*F_grav_moon_y - moon_coords[1]*F_grav_moon_x)
-        print(r1[0]*F1[1] - r1[1]*F1[0])
-                                         
         F_net = 400*F1 + 800*F2 + 400*F3
 
         tau_net = np.sum([r1[0]*F1[1] - r1[1]*F1[0],
                           r2[0]*F2[1] - r2[1]*F2[0],
                           r3[0]*F3[1] - r3[1]*F3[0],
-                          (earth_coords[0]*F_grav_earth_y - earth_coords[1]*F_grav_earth_x) / 25,
-                          (moon_coords[0]*F_grav_moon_y - moon_coords[1]*F_grav_moon_x) * -1,
+                          #(earth_coords[0]*F_grav_earth_y - earth_coords[1]*F_grav_earth_x) / 25,
+                          #(moon_coords[0]*F_grav_moon_y - moon_coords[1]*F_grav_moon_x) * -1,
                          ])
 
         I = (width**3 + height) / 12
