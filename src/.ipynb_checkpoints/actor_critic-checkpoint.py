@@ -6,16 +6,16 @@ class ActorCritic(th.nn.Module):
     def __init__(self, state_dim, action_dim):
         super(ActorCritic, self).__init__()
         self.actor = nn.Sequential(
-            nn.Linear(state_dim, 16),
+            nn.Linear(state_dim, 32),
             nn.ReLU(),
-            nn.Linear(16, action_dim),
+            nn.Linear(32, action_dim),
             nn.ReLU()
             
         )
         self.critic = nn.Sequential(
-            nn.Linear(state_dim, 16),
+            nn.Linear(state_dim, 32),
             nn.ReLU(),
-            nn.Linear(16,1)
+            nn.Linear(32,1)
         )
 
     def forward(self, state):

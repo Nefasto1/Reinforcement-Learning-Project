@@ -13,7 +13,6 @@ def distance(x1, x2):
     
     return d
     
-
 def dynamic_step(F1_mod: float, F2_mod:float, F3_mod: float, 
                  alpha1: float, alpha2: float, alpha3: float,
                  mass_shuttle: float, width: float, height: float,
@@ -41,7 +40,7 @@ def dynamic_step(F1_mod: float, F2_mod:float, F3_mod: float,
         distance_shuttle_moon  = distance(com_0, moon_coords) * pixel_side 
         distance_shuttle_earth = distance(com_0, earth_coords) * pixel_side
     
-        F_grav_moon = G * mass_shuttle * mass_moon / distance_shuttle_moon**2
+        F_grav_moon = G * mass_shuttle * mass_moon / distance_shuttle_moon**1.9
         beta  = np.arccos((moon_coords - com_0)[0]*pixel_side/distance_shuttle_moon) 
         if (moon_coords - com_0)[1] < 0:
             beta *= -1 
@@ -49,7 +48,7 @@ def dynamic_step(F1_mod: float, F2_mod:float, F3_mod: float,
         F_grav_moon_x = F_grav_moon * np.cos(beta)
         F_grav_moon_y = F_grav_moon * np.sin(beta)
         
-        F_grav_earth = G * mass_shuttle * mass_earth / distance_shuttle_earth**2.5 ## !!! MODIFIED !!!
+        F_grav_earth = G * mass_shuttle * mass_earth / distance_shuttle_earth**2.1
         gamma = np.arccos((earth_coords-com_0)[0]*pixel_side/distance_shuttle_earth)
         if (earth_coords - com_0)[1] < 0:
             gamma *= -1 
@@ -59,7 +58,7 @@ def dynamic_step(F1_mod: float, F2_mod:float, F3_mod: float,
         F_grav = np.array((F_grav_moon_x + F_grav_earth_x,
                            F_grav_moon_y + F_grav_earth_y))
     
-        F_net = 400*F1 + 800*F2 + 400*F3
+        F_net = 300*F1 + 500*F2 + 300*F3
 
         tau_net = np.sum([r1[0]*F1[1] - r1[1]*F1[0],
                           r2[0]*F2[1] - r2[1]*F2[0],

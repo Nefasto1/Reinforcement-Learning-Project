@@ -51,6 +51,7 @@ class Agent():
         shuttle_y = earth_coords[0] + 512*earth_size*np.cos((self.angle - 90) * np.pi/180)
         
         self.coords: np.array = np.array((shuttle_x, shuttle_y))
+        self.prev_coords: np.array = np.array((shuttle_x, shuttle_y))
 
         self.speed:     tuple = (0, 0)
         self.theta_vel: int   = 0
@@ -122,6 +123,8 @@ class Agent():
         # Update the fuel counter and check if the engines can be activated
         F1_mod, F2_mod, F3_mod = self.__update_fuel(F1_mod, F2_mod, F3_mod)
 
+        self.prev_coords = self.coords
+        
         # Dynamic step
         self.theta_vel, self.angle, self.speed, self.coords = dynamic_step(F1_mod, F2_mod, F3_mod,
                                                                            self.alpha1, self.alpha2, self.alpha3,
@@ -139,6 +142,8 @@ class Agent():
         return self.angle-90
     def get_coords(self):
         return self.coords
+    def get_prev_coords(self):
+        return self.prev_coords
     def get_fuel(self):
         return self.fuel
     def get_speed(self):
@@ -255,6 +260,10 @@ class Environment():
         reward = 0
         
         shuttle_x, shuttle_y = self.shuttle_agent.get_coords()
+        shuttle_x_prev, shuttle_y_prev = self.shuttle_agent.get_prev_coords()
+        shuttle_angular_speed = self.shuttle_agent.get_angular_speed()
+        shuttle_speed = self.shuttle_agent.get_speed()
+        
         flag_x, flag_y       = self.flag_coords
         earth_x, earth_y     = self.earth_coords
         moon_x, moon_y       = self.moon_coords
@@ -263,11 +272,14 @@ class Environment():
         #reward -= np.sqrt( (shuttle_x-flag_x) **2  + (shuttle_y-flag_y) **2  )
 
         shuttle = np.array((shuttle_x, shuttle_y))
+        shuttle_prev = np.array((shuttle_x_prev, shuttle_y_prev))
         flag = np.array((flag_x, flag_y))
         moon = np.array((moon_x, moon_y))
         
         d_flag = distance(shuttle, flag)
         d_moon = distance(shuttle, moon)
+        d_flag_prev = distance(shuttle_prev, flag)
+        shuttle_speed_mod = np.sqrt(np.sum(shuttle_speed*shuttle_speed))
 
         reward += 10 if d_moon < 1050 else 0
         reward += 10 if d_moon < 950 else 0
@@ -280,12 +292,22 @@ class Environment():
         reward += 10 if d_moon < 350 else 0
         reward += 10 if d_moon < 250 else 0
         reward += 10 if d_moon < 150 else 0
-        
-        reward += 10 if d_flag < 350 else 0
-        reward += 10 if d_flag < 850 else 0
-        reward += 10 if d_flag < 150 else 0
-        reward += 10 if d_flag < 50  else 0
 
+        reward += 10
+
+        reward += 10 if d_flag < 450 else 0
+        reward += 10 if d_flag < 350 else 0
+        reward += 20 if d_flag < 250 else 0
+        reward += 30 if d_flag < 150 else 0
+        reward += 40 if d_flag < 50  else 0
+
+        if d_flag < 250:
+            reward -= shuttle_speed_mod 
+            
+        delta_d_flag = d_flag_prev - d_flag
+
+        reward -= 100 if delta_d_flag < 0 else 0
+        
         if self.actives_fire[0]:
             reward *= 0.75
         if self.actives_fire[1]:
@@ -293,13 +315,12 @@ class Environment():
         if self.actives_fire[2]:
             reward *= 0.75
 
-        shuttle_angular_speed = self.shuttle_agent.get_angular_speed()
         reward = reward if abs(shuttle_angular_speed) < 2 else 0
 
+        reward = reward if shuttle_speed_mod < 10 else 0
 
-        # reward -= np.sqrt( (shuttle_x-flag_x) **2 + (shuttle_y-flag_y) **2 )  / 50 # Flag distance
-        # reward -= abs(self.shuttle_agent.get_angle() - self.flag_angle)      /500# Angle difference
-        # reward -= abs(self.shuttle_agent.get_angular_speed()) * 10                 # Angle difference
+        if self.__is_landed():
+            reward += 10000000
 
         return reward
 
