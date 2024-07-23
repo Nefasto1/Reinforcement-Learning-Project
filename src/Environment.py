@@ -14,7 +14,7 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox # To Resize and add
 
 from PIL import Image                                        # To Rotate the images
 
-from src.dynamics import dynamic_step, distance    # To simulate the dynamics
+from src.dynamics import dynamic_step    # To simulate the dynamics
 
 ###########################################################
 ##                   AGENT DEFINITION                    ##
@@ -25,7 +25,9 @@ class Agent():
                  angle:        int, 
                  earth_size:   int, 
                  earth_coords: tuple,
-                 inertia:      float
+                 inertia:      float,
+                 init_coords: tuple | None = None,
+                 init_theta_vel: int | None = None
                 ):
 
         # Initialize the Agent information with the input data
@@ -46,17 +48,16 @@ class Agent():
         self.earth_coords: np.array = np.array((150, 150))
         self.moon_coords:  np.array = np.array((900, 900))
         
-
-        shuttle_x = earth_coords[0] - 512*earth_size*np.sin((self.angle - 90) * np.pi/180)
-        shuttle_y = earth_coords[0] + 512*earth_size*np.cos((self.angle - 90) * np.pi/180)
+        shuttle_x = earth_coords[0] - 512*earth_size*np.sin((self.angle - 90) * np.pi/180) if init_coords is None else init_coords[0]
+        shuttle_y = earth_coords[0] + 512*earth_size*np.cos((self.angle - 90) * np.pi/180) if init_coords is None else init_coords[1]
         
-        self.coords: np.array = np.array((shuttle_x, shuttle_y))
+        self.coords:      np.array = np.array((shuttle_x, shuttle_y))
         self.prev_coords: np.array = np.array((shuttle_x, shuttle_y))
 
         self.speed:     tuple = (0, 0)
-        self.theta_vel: int   = 0
+        self.theta_vel: int   = 0 if init_theta_vel is None else init_theta_vel
         self.fuel:      int   = 3000
-        self.dt:        float = 1        
+        self.dt:        float = 1   
 
     def __update_fuel(self, 
                       left_speed:   float, 
@@ -124,7 +125,6 @@ class Agent():
         F1_mod, F2_mod, F3_mod = self.__update_fuel(F1_mod, F2_mod, F3_mod)
 
         self.prev_coords = self.coords
-        
         # Dynamic step
         self.theta_vel, self.angle, self.speed, self.coords = dynamic_step(F1_mod, F2_mod, F3_mod,
                                                                            self.alpha1, self.alpha2, self.alpha3,
@@ -256,58 +256,81 @@ class Environment():
         reward: int
             The state reward
         """
+        shuttle_angular_speed = self.shuttle_agent.get_angular_speed()
+        shuttle_angle = self.shuttle_agent.get_angle()
+        
+        shuttle_x, shuttle_y           = self.shuttle_agent.get_coords()
+        prev_shuttle_x, prev_shuttle_y = self.shuttle_agent.get_prev_coords()
+        shuttle_x_speed, shuttle_y_speed = self.shuttle_agent.get_speed()
+        flag_x, flag_y                 = self.flag_coords
+        earth_x, earth_y               = self.earth_coords
+        moon_x, moon_y               = self.moon_coords
+
+        speed_module = np.sqrt(shuttle_x_speed ** 2 + shuttle_y_speed ** 2)
+
+        flag_distance      = np.sqrt( (shuttle_x     -flag_x) **2 + (shuttle_y     -flag_y) **2 )
+        prev_flag_distance = np.sqrt( (prev_shuttle_x-flag_x) **2 + (prev_shuttle_y-flag_y) **2 )
+        
+        earth_distance      = np.sqrt( (shuttle_x     -earth_x) **2 + (shuttle_y     -earth_y) **2 )
+        prev_earth_distance = np.sqrt( (prev_shuttle_x-earth_x) **2 + (prev_shuttle_y-earth_y) **2 )
+
+        moon_distance      = np.sqrt( (shuttle_x     -moon_x) **2 + (shuttle_y     -moon_y) **2 )
+        prev_moon_distance = np.sqrt( (prev_shuttle_x-moon_x) **2 + (prev_shuttle_y-moon_y) **2 )
 
         reward = 0
         
-        shuttle_x, shuttle_y = self.shuttle_agent.get_coords()
-        shuttle_x_prev, shuttle_y_prev = self.shuttle_agent.get_prev_coords()
-        shuttle_angular_speed = self.shuttle_agent.get_angular_speed()
-        shuttle_speed = self.shuttle_agent.get_speed()
+        # Discrete
+        # reward += -10 if prev_flag_distance - flag_distance <= 0 else 10
+        # reward += 0 if earth_distance - flag_distance <= 0 else 20
+
+        # if self.actives_fire[0]:
+        #     reward -= 2.5
+        # if self.actives_fire[1]:
+        #     reward -= 4
+        # if self.actives_fire[2]:
+        #     reward -= 2.5
         
-        flag_x, flag_y       = self.flag_coords
-        earth_x, earth_y     = self.earth_coords
-        moon_x, moon_y       = self.moon_coords
+        # print(moon_distance)
+        # reward += prev_flag_distance - flag_distance 
+        # reward += 0 if earth_distance - flag_distance <= 0 else (prev_earth_distance - earth_distance) - (prev_flag_distance - flag_distance)
 
-        #reward += np.sqrt( (shuttle_x-earth_x) **2 + (shuttle_y-earth_y) **2 )
-        #reward -= np.sqrt( (shuttle_x-flag_x) **2  + (shuttle_y-flag_y) **2  )
-
-        shuttle = np.array((shuttle_x, shuttle_y))
-        shuttle_prev = np.array((shuttle_x_prev, shuttle_y_prev))
-        flag = np.array((flag_x, flag_y))
-        moon = np.array((moon_x, moon_y))
+        # print(speed_module)
+        # print(shuttle_angular_speed)
+        # reward += 1  if moon_distance < 1150 else 0
+        # reward += 2  if moon_distance < 1050 else 0
+        # reward += 3  if moon_distance < 950 else 0
+        # reward += 1  if moon_distance < 850 else 0
+        # reward += 2  if moon_distance < 750 else 0
+        # reward += 3  if moon_distance < 650 else 0
+        # reward += 4  if moon_distance < 550 else 0
+        # reward += 8  if moon_distance < 450 else 0
         
-        d_flag = distance(shuttle, flag)
-        d_moon = distance(shuttle, moon)
-        d_flag_prev = distance(shuttle_prev, flag)
-        shuttle_speed_mod = np.sqrt(np.sum(shuttle_speed*shuttle_speed))
-
-        reward += 10 if d_moon < 1050 else 0
-        reward += 10 if d_moon < 950 else 0
-        reward += 10 if d_moon < 850 else 0
-        reward += 10 if d_moon < 825 else 0
-        reward += 10 if d_moon < 750 else 0
-        reward += 10 if d_moon < 650 else 0
-        reward += 10 if d_moon < 550 else 0
-        reward += 10 if d_moon < 450 else 0
-        reward += 10 if d_moon < 350 else 0
-        reward += 10 if d_moon < 250 else 0
-        reward += 10 if d_moon < 150 else 0
-
-        reward += 10
-
-        reward += 10 if d_flag < 450 else 0
-        reward += 10 if d_flag < 350 else 0
-        reward += 20 if d_flag < 250 else 0
-        reward += 30 if d_flag < 150 else 0
-        reward += 40 if d_flag < 50  else 0
-
-        if d_flag < 250:
-            reward -= shuttle_speed_mod 
-            
-        delta_d_flag = d_flag_prev - d_flag
-
-        reward -= 100 if delta_d_flag < 0 else 0
+        reward += 1   if flag_distance < 1150 else 0
+        reward += 2   if flag_distance < 1050 else 0
+        reward += 3   if flag_distance < 950 else 0
+        reward += 4   if flag_distance < 850 else 0
+        reward += 5   if flag_distance < 750 else 0
+        reward += 7   if flag_distance < 650 else 0
+        reward += 8   if flag_distance < 550 else 0
+        reward += 16  if flag_distance < 450 else 0
+        reward += 32  if flag_distance < 350 else 0
+        reward += 64  if flag_distance < 250 else 0
+        reward += 128 if flag_distance < 150 else 0
+        reward += 150 if flag_distance < 100 else 0
+        reward += 300 if flag_distance < 50 else 0
+        reward += 600 if flag_distance < 20 else 0
         
+        reward += 100 if flag_distance < 850 and speed_module < 1.0 else 0
+        reward += 150 if flag_distance < 550 and speed_module < 0.5 else 0
+        
+        reward += 200 if flag_distance < 150 and speed_module < .25 else 0
+
+        reward += 10000 if self.__is_landed() else 0
+
+        
+        reward += 360 - (shuttle_angle % 360 - self.flag_angle % 360) if flag_distance < 150 else 0
+        # reward /= max(1, speed_module)
+
         if self.actives_fire[0]:
             reward *= 0.75
         if self.actives_fire[1]:
@@ -315,12 +338,23 @@ class Environment():
         if self.actives_fire[2]:
             reward *= 0.75
 
-        reward = reward if abs(shuttle_angular_speed) < 2 else 0
+        
+        reward = reward if abs(shuttle_angular_speed) < 1.5 else 0
+        # reward += -100* if prev_flag_distance - flag_distance < 0 else 20
+        reward += prev_flag_distance - flag_distance
 
-        reward = reward if shuttle_speed_mod < 10 else 0
+        # reward += earth_distance s
+        # if self.__is_crashed():
+        #     reward -= 1000
+        # if self.__is_near():
+        #     reward += 1000
+        # if self.__is_landed():
+        #     reward += 100000 / 100
 
-        if self.__is_landed():
-            reward += 10000000
+        
+        # reward -= distance  / 50 # Flag distance
+        # reward -= abs(self.shuttle_agent.get_angle() - self.flag_angle) /500 * self.__is_near()        # Angle difference
+        # reward -= abs(self.shuttle_agent.get_angular_speed()) * 10                 # Angle difference
 
         return reward
 
@@ -403,7 +437,9 @@ class Environment():
     def reset(self, 
               angle:      int   = 90, 
               flag_angle: int   = 90,
-              inertia:    float = 0.
+              inertia:    float = 0.,
+              init_coords: tuple | None = None,
+              init_theta_vel: tuple | None = None
              ):
         """
         Reset the episode state
@@ -439,7 +475,7 @@ class Environment():
         self.actives_fire: list = [False, False, False]
 
         # Initialize the shuttle agent
-        self.shuttle_agent = Agent(angle, self.earth_size, self.earth_coords, inertia)
+        self.shuttle_agent = Agent(angle, self.earth_size, self.earth_coords, inertia, init_coords, init_theta_vel)
 
         self.done:   bool = False
         self.landed: bool = False
@@ -600,10 +636,22 @@ class Environment():
                 ax.add_patch( patches.Circle(self.earth_coords, self.earth_size*430, edgecolor='red', facecolor="None", lw=3, zorder=5))
                 ax.add_patch( patches.Circle(self.moon_coords,  self.moon_size*430,  edgecolor='red', facecolor="None", lw=3, zorder=5))
                 
-                ax.add_patch( patches.Circle(self.moon_coords,  80,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
-                ax.add_patch( patches.Circle(self.earth_coords, 140,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
-                ax.add_patch( patches.Circle(self.moon_coords,  200,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
-                ax.add_patch( patches.Circle(self.earth_coords, 400,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                ax.add_patch( patches.Circle(self.moon_coords,  150,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                ax.add_patch( patches.Circle(self.moon_coords,  250,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                ax.add_patch( patches.Circle(self.moon_coords,  350,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                ax.add_patch( patches.Circle(self.moon_coords,  450,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                ax.add_patch( patches.Circle(self.moon_coords,  550,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                ax.add_patch( patches.Circle(self.moon_coords,  650,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                ax.add_patch( patches.Circle(self.moon_coords,  750,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                ax.add_patch( patches.Circle(self.moon_coords,  850,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                # ax.add_patch( patches.Circle(self.moon_coords,  950,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                # ax.add_patch( patches.Circle(self.moon_coords,  1050,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                # ax.add_patch( patches.Circle(self.moon_coords,  1150,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                
+                ax.add_patch( patches.Circle(self.flag_coords,  150,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                ax.add_patch( patches.Circle(self.flag_coords,  100,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                ax.add_patch( patches.Circle(self.flag_coords,  50,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
+                ax.add_patch( patches.Circle(self.flag_coords,  20,  edgecolor='blue', facecolor="None", lw=3, zorder=5))
 
                 ax.axvline(0,               color="red", lw=3, zorder=5)
                 ax.axvline(self.image_size, color="red", lw=3, zorder=5)
@@ -611,8 +659,8 @@ class Environment():
                 ax.axhline(self.image_size, color="red", lw=3, zorder=5)
 
                 # Draw the collision boxes for the positive rewards
-                ax.add_patch( patches.Circle(self.flag_coords,     self.flag_size*2000,   edgecolor='green', facecolor="None", lw=3, zorder=5))
-                ax.add_patch( patches.Circle((target_x, target_y), self.shuttle_size*430, edgecolor='green', facecolor="None", lw=3, zorder=5))
+                # ax.add_patch( patches.Circle(self.flag_coords,     self.flag_size*2000,   edgecolor='green', facecolor="None", lw=3, zorder=5))
+                # ax.add_patch( patches.Circle((target_x, target_y), self.shuttle_size*430, edgecolor='green', facecolor="None", lw=3, zorder=5))
 
                 # Draw the shuttle center position
                 ax.scatter(shuttle_x, shuttle_y, color="red", lw=1, zorder=5)
