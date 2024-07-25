@@ -387,7 +387,7 @@ class Environment():
            and moon_distance                            >   50  \
            and abs(flag_angle%360 - shuttle_angle%360)  <   25  \
            and speed_module                             <=  0.5 \
-           and shuttle_angular_speed                    <=  0.5 
+           and abs(shuttle_angular_speed)               <=  0.5 
 
     def __is_near(self):
         """
