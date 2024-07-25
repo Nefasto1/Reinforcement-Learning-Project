@@ -160,7 +160,7 @@ class Agent():
         shuttle_x, shuttle_y = self.coords
         shuttle_speed_x, shuttle_speed_y = self.speed
 
-        return (shuttle_x, shuttle_y, self.angle, shuttle_speed_x, shuttle_speed_y, self.angular_speed, self.fuel)
+        return (int(shuttle_x), int(shuttle_y), int(self.angle), int(shuttle_speed_x), int(shuttle_speed_y), int(self.angular_speed), self.fuel)
         
 ###########################################################
 ##                ENVIRONMENT DEFINITION                 ##
@@ -290,28 +290,27 @@ class Environment():
         reward: int = 0
 
         # Give the Agent a reward based on its distance from the flag
-        reward += 5    if flag_distance < 650  else 0
-        reward += 5    if flag_distance < 550  else 0
-        reward += 5    if flag_distance < 450  else 0
-        reward += 10   if flag_distance < 350  else 0
-        reward += 10   if flag_distance < 250  else 0
-        reward += 10   if flag_distance < 150  else 0
-        reward += 50   if flag_distance < 100  else 0
-        reward += 150  if flag_distance < 50   else 0
-        reward += 300  if flag_distance < 20   else 0
+        reward += 5  if flag_distance < 650  else 0
+        reward += 5  if flag_distance < 550  else 0
+        reward += 5  if flag_distance < 450  else 0
+        reward += 5  if flag_distance < 350  else 0
+        reward += 5  if flag_distance < 250  else 0
+        reward += 5  if flag_distance < 150  else 0
+        reward += 5  if flag_distance < 100  else 0
+        reward += 5  if flag_distance < 50   else 0
+        reward += 10 if flag_distance < 20   else 0
 
         # Give rewards if the speed is under a certain value
-        reward += 30 if speed_module < 0.5 else 0
-        reward += 30 if speed_module < 0.5 and flag_distance < 200 else 0
+        reward += 15 if speed_module < 0.5 else 0
+        reward += 15 if speed_module < 0.5 and flag_distance < 200 else 0
 
         # Give a reward if the distance from the flag is decreased
-        reward += 50 if prev_flag_distance - flag_distance > 0 else 0
+        # reward += 20 if prev_flag_distance - flag_distance > 0 else 0
 
         # Give a reward if the angle of the shuttle is correct for the landing
-        reward += 40 if flag_distance < 150 and abs(shuttle_angle % 360 - self.flag_angle % 360) < 25 else 0
+        reward += 15 if flag_distance < 150 and abs(shuttle_angle % 360 - self.flag_angle % 360) < 25 else 0
 
         # Give a reward if the shuttle angular speed is small
-        reward += 50 if abs(shuttle_angular_speed) < 1.5 else 0
 
         # Give a big reward if the shuttle has landed
         reward += 10000 if self.__is_landed() else 0
@@ -321,6 +320,7 @@ class Environment():
         
         # Give a relative big penalty if the shuttle has crashed near the moon but away from the flag
         reward -= 1000  if self.__is_crashed() and flag_distance < 500 and flag_distance > 200 else 0
+        reward = reward if abs(shuttle_angular_speed) < 1.5 else 0
 
         return reward
 
@@ -447,8 +447,8 @@ class Environment():
         # Initialize the images coordinates
         self.earth_coords: tuple = (150, 150)
         self.moon_coords:  tuple = (900, 900)
-        self.flag_coords:  tuple = (float(self.moon_coords[0] - 512*self.moon_size*np.sin((self.flag_angle) * np.pi/180)) ,
-                                    float(self.moon_coords[1] + 512*self.moon_size*np.cos((self.flag_angle) * np.pi/180)) )
+        self.flag_coords:  tuple = (int(self.moon_coords[0] - 512*self.moon_size*np.sin((self.flag_angle) * np.pi/180)) ,
+                                    int(self.moon_coords[1] + 512*self.moon_size*np.cos((self.flag_angle) * np.pi/180)) )
 
         # Initializate the fire to deactivate
         # (left, main, right)
