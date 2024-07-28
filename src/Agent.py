@@ -21,6 +21,13 @@ class Agent():
         self.h: float = 100
         self.m: float = 1000
         
+        # Additional informations
+        self.angle:         float = angle
+        self.speed:         tuple = (0, 0)
+        self.angular_speed: float = 0 if init_angular_speed is None else init_angular_speed
+        self.dt:            float = 1   
+        self.fuel:            int = 3000
+                    
         # Earth, Moon and shuttle coordinates
         shuttle_x = earth_coords[0] - 512*earth_size*np.sin((self.angle - 90) * np.pi/180) if init_coords is None else init_coords[0]
         shuttle_y = earth_coords[0] + 512*earth_size*np.cos((self.angle - 90) * np.pi/180) if init_coords is None else init_coords[1]
@@ -40,13 +47,6 @@ class Agent():
         self.alpha_to_left:  float = 180
         self.alpha_center:   float = 90
         self.alpha_to_right: float = 0 
-        
-        # Additional informations
-        self.angle:         float = angle
-        self.speed:         tuple = (0, 0)
-        self.angular_speed: float = 0 if init_angular_speed is None else init_angular_speed
-        self.dt:            float = 1   
-        self.fuel:            int = 3000
 
     def __update_fuel(self, 
                       left_speed:   float, 
